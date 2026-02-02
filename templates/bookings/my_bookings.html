@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Мои бронирования{% endblock %}
+
+{% block content %}
+  <div class="container mt-4">
+    <h1>Мои бронирования</h1>
+
+    {% if bookings %}
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Товар</th>
+            <th>Даты</th>
+            <th>Стоимость</th>
+            <th>Статус</th>
+            <th>Действия</th>  <!-- ← новая колонка -->
+          </tr>
+        </thead>
+        <tbody>
+          {% for booking in bookings %}
+            <tr>
+              <td>
+                <a href="{% url 'catalog:product_detail' booking.product.pk %}">
+                  {{ booking.product.name }}
+                </a>
+              </td>
+              <td>{{ booking.start_date|date:"d.m.Y" }} — {{ booking.end_date|date:"d.m.Y" }}</td>
+              <td>{{ booking.total_cost }} ₽</td>
+              <td>
+                <span class="badge bg-{% if booking.status == 'confirmed' %}success{% elif booking.status == 'pending' %}warning{% else %}danger{% endif %}">
+                  {{ booking.get_status_display }}
+                </span>
+              </td>
+              <td>
+                <!-- ← Вот эта кнопка — оставляем отзыв только после завершения аренды -->
+                {% if booking.status == 'completed' and not booking.review %}
+                  <a href="{% url 'bookings:leave_review' booking.id %}" class="btn btn-sm btn-outline-primary">
+                    Оставить отзыв
+                  </a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="text-muted">У вас пока нет бронирований.</p>
+    {% endif %}
+  </div>
+{% endblock %}

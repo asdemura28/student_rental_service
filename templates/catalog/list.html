@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Каталог предметов{% endblock %}
+
+{% block content %}
+  <div class="container mt-4">
+    <h1 class="mb-4">Доступные предметы для аренды</h1>
+
+    <!-- Красивая форма фильтра -->
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <form method="get" class="row g-3">
+          <div class="col-md-3">
+            <label for="id_name" class="form-label">Название</label>
+            {{ filter.form.name|add_class:"form-control" }}
+          </div>
+          <div class="col-md-3">
+            <label for="id_author" class="form-label">Автор</label>
+            {{ filter.form.author|add_class:"form-control" }}
+          </div>
+          <div class="col-md-3">
+            <label for="id_category" class="form-label">Категория</label>
+            {{ filter.form.category|add_class:"form-select" }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Цена (₽)</label>
+            <div class="input-group">
+              {{ filter.form.price_min|add_class:"form-control" }}
+              <span class="input-group-text">–</span>
+              {{ filter.form.price_max|add_class:"form-control" }}
+            </div>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">Фильтровать</button>
+            <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">Сбросить</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Список товаров -->
+    {% if filter.qs %}
+      <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for product in filter.qs %}
+          <div class="col">
+            <div class="card h-100 shadow-sm">
+              {% if product.photo %}
+                <img src="{{ product.photo.url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+              {% else %}
+                <img src="https://via.placeholder.com/300x200?text=Нет+фото" class="card-img-top" alt="Нет фото">
+              {% endif %}
+              <div class="card-body">
+                <!-- Автор ПЕРЕД названием -->
+                <p class="card-text text-muted small mb-1">
+                  {% if product.author %}
+                    Автор: {{ product.author }}
+                  {% else %}
+                    Автор не указан
+                  {% endif %}
+                </p>
+
+                <!-- Название после автора -->
+                <h5 class="card-title mt-0">{{ product.name }}</h5>
+
+                <!-- Категория -->
+                <p class="card-text text-muted small mb-2">
+                  {{ product.category.name|default:"Без категории" }}
+                </p>
+
+                <!-- Цены -->
+                <p class="card-text fw-bold">
+                  <strong>В день:</strong> {{ product.daily_price }} ₽
+                </p>
+                {% if product.weekly_price %}
+                  <p class="card-text fw-bold">
+                    <strong>В неделю:</strong> {{ product.weekly_price }} ₽
+                  </p>
+                {% endif %}
+                <p class="card-text">
+                  <strong>Залог:</strong> {{ product.deposit }} ₽
+                </p>
+              </div>
+              <div class="card-footer bg-transparent border-0 text-center">
+                <a href="{% url 'catalog:product_detail' product.pk %}" class="btn btn-primary w-100">Подробнее</a>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="col-12">
+            <div class="alert alert-info text-center">
+              По вашему запросу ничего не найдено.
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- Пагинация (если включена в view) -->
+      {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-5">
+          <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">Предыдущая</a>
+              </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+              <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">{{ num }}</a>
+              </li>
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}">Следующая</a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      {% endif %}
+
+    {% else %}
+      <div class="alert alert-info text-center">
+        <h5>В каталоге пока нет предметов</h5>
+        {% if user.is_authenticated %}
+          <a href="{% url 'catalog:product_create' %}" class="btn btn-success mt-3">Добавить свой предмет</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

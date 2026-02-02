@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Мои товары{% endblock %}
+
+{% block content %}
+  <div class="container mt-5">
+    <h1 class="mb-4">Мои товары</h1>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% if products %}
+      <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for product in products %}
+          <div class="col">
+            <div class="card h-100 shadow-sm">
+              {% if product.photo %}
+                <img src="{{ product.photo.url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+              {% else %}
+                <img src="https://via.placeholder.com/300x200?text=Нет+фото" class="card-img-top" alt="Нет фото">
+              {% endif %}
+              <div class="card-body">
+                <h5 class="card-title">{{ product.name }}</h5>
+                <p class="card-text text-muted small">
+                  Автор: {{ product.author|default:"Не указан" }}
+                </p>
+                <p class="card-text text-muted small">
+                  {{ product.category.name|default:"Без категории" }}
+                </p>
+                <p class="card-text fw-bold">
+                  <strong>В день:</strong> {{ product.daily_price }} ₽
+                </p>
+                <p class="card-text">
+                  Залог: {{ product.deposit }} ₽
+                </p>
+                <p class="card-text">
+                  <strong>Статус:</strong> 
+                  {% if product.is_available %}
+                    <span class="badge bg-success">Доступен</span>
+                  {% else %}
+                    <span class="badge bg-danger">Скрыт</span>
+                  {% endif %}
+                </p>
+              </div>
+              <div class="card-footer bg-transparent border-0 d-flex gap-2">
+                <a href="{% url 'catalog:product_detail' product.pk %}" class="btn btn-outline-primary flex-grow-1">Подробнее</a>
+                <a href="{% url 'catalog:product_update' product.pk %}" class="btn btn-outline-warning">Редактировать</a>
+                <a href="{% url 'catalog:product_delete' product.pk %}" class="btn btn-outline-danger">Удалить</a>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="col-12">
+            <div class="alert alert-info text-center">
+              У вас пока нет товаров в каталоге.
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info text-center">
+        <h5>У вас пока нет товаров</h5>
+        <a href="{% url 'catalog:product_create' %}" class="btn btn-success mt-3">Добавить свой предмет</a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация — Аренда учебников</title>
+    <!-- Можно подключить bootstrap или свой css позже -->
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+
+<h1>Регистрация</h1>
+
+{% if form.errors %}
+    <p class="error">Пожалуйста, исправьте ошибки в форме:</p>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    {{ form.as_p }}   <!-- самый простой способ вывести всю форму -->
+
+    <!-- Или можно выводить поля по одному, красивее: -->
+    <!--
+    <p>
+        {{ form.username.label_tag }}
+        {{ form.username }}
+        {{ form.username.errors }}
+    </p>
+
+    <p>
+        {{ form.email.label_tag }}
+        {{ form.email }}
+        {{ form.email.errors }}
+    </p>
+
+    <p>
+        {{ form.password1.label_tag }}
+        {{ form.password1 }}
+        {{ form.password1.errors }}
+    </p>
+
+    <p>
+        {{ form.password2.label_tag }}
+        {{ form.password2 }}
+        {{ form.password2.errors }}
+    </p>
+
+    <p>
+        {{ form.university.label_tag }}
+        {{ form.university }}
+    </p>
+
+    <p>
+        {{ form.student_id_photo.label_tag }}
+        {{ form.student_id_photo }}
+    </p>
+    -->
+
+    <button type="submit">Зарегистрироваться</button>
+</form>
+
+<p>Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+
+</body>
+</html>

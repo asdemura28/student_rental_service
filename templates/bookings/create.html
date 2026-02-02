@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Забронировать — {{ product.name }}{% endblock %}
+
+{% block extra_head %}
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+{% endblock %}
+
+{% block content %}
+  <div class="container mt-4">
+    <h1>Забронировать: {{ product.name }}</h1>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    {% if form.errors %}
+      <div class="alert alert-danger">
+        <strong>Исправьте ошибки в форме:</strong>
+        <ul>
+          {% for field in form %}
+            {% for error in field.errors %}
+              <li>{{ field.label }}: {{ error }}</li>
+            {% endfor %}
+          {% endfor %}
+          {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <div class="row">
+      <!-- Левая часть — календарь + форма -->
+      <div class="col-md-7">
+        <h4>Выберите даты аренды</h4>
+        <div id="calendar" class="border rounded p-3 mb-4 bg-white"></div>
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% load widget_tweaks %}
+
+          <div class="mb-3">
+            <label for="id_start_date" class="form-label">Дата начала</label>
+            {% render_field form.start_date class+="form-control" id="id_start_date" %}
+            {{ form.start_date.errors }}
+          </div>
+
+          <div class="mb-3">
+            <label for="id_end_date" class="form-label">Дата окончания</label>
+            {% render_field form.end_date class+="form-control" id="id_end_date" %}
+            {{ form.end_date.errors }}
+          </div>
+
+          <div class="mb-4">
+            <p id="total-cost" class="fw-bold fs-5 text-primary">Стоимость: — ₽</p>
+          </div>
+
+          <button type="submit" class="btn btn-success btn-lg me-2">Отправить запрос</button>
+          <a href="{% url 'catalog:product_detail' product.pk %}" class="btn btn-outline-secondary">Назад</a>
+        </form>
+      </div>
+
+      <!-- Правая часть — информация о товаре -->
+      <div class="col-md-5">
+        <h4>Предмет</h4>
+        <div class="card">
+          <div class="card-body">
+            {% if product.photo %}
+              <img src="{{ product.photo.url }}" class="img-fluid rounded mb-3" alt="{{ product.name }}" style="max-height: 300px; object-fit: cover;">
+            {% else %}
+              <img src="https://via.placeholder.com/400x300?text=Нет+фото" class="img-fluid rounded mb-3" alt="Нет фото">
+            {% endif %}
+
+            <p><strong>Цена за день:</strong> {{ product.daily_price }} ₽</p>
+            {% if product.weekly_price %}
+              <p><strong>Цена за неделю:</strong> {{ product.weekly_price }} ₽</p>
+            {% endif %}
+            <p><strong>Залог:</strong> {{ product.deposit }} ₽</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Безопасная передача занятых дат -->
+  {{ events|json_script:"events-data" }}
+
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    const startInput = document.getElementById('id_start_date');
+    const endInput   = document.getElementById('id_end_date');
+    const costEl     = document.getElementById('total-cost');
+
+    // Получаем данные безопасно
+    const eventsDataElement = document.getElementById('events-data');
+    let eventsData = [];
+    if (eventsDataElement) {
+      try {
+        eventsData = JSON.parse(eventsDataElement.textContent || '[]');
+      } catch (e) {
+        console.error('Ошибка парсинга событий:', e);
+      }
+    }
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      locale: 'ru',
+      firstDay: 1,
+      timeZone: 'Europe/Moscow',
+      selectable: true,
+      selectMirror: true,
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth'
+      },
+
+      events: eventsData,
+
+      // ← Блокировка выбора занятых дат
+      selectAllow: function(selectInfo) {
+        const start = selectInfo.start;
+        const end   = selectInfo.end;
+
+        // Проверяем, пересекается ли выбранный период с занятыми
+        for (let event of eventsData) {
+          const eventStart = new Date(event.start);
+          const eventEnd   = new Date(event.end);
+
+          if (
+            (start < eventEnd && end > eventStart)  // пересечение
+          ) {
+            return false;  // Запрещаем выбор
+          }
+        }
+        return true;  // Разрешаем
+      },
+
+      select: function(info) {
+        startInput.value = info.startStr.split('T')[0];  // Только дата
+        endInput.value   = info.endStr.split('T')[0];    // Только дата
+        calculateCost();
+      },
+
+      validRange: {
+        start: new Date().toISOString().split('T')[0]  // Запрет прошедших дат
+      },
+
+      height: 'auto',
+      contentHeight: 'auto'
+    });
+
+    calendar.render();
+
+    // ──────── Расчёт стоимости ────────
+    function calculateCost() {
+      const startStr = startInput.value.trim();
+      const endStr   = endInput.value.trim();
+
+      if (!startStr || !endStr) {
+        costEl.innerHTML = 'Стоимость: — ₽';
+        return;
+      }
+
+      const startDate = new Date(startStr);
+      const endDate   = new Date(endStr);
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        costEl.innerHTML = 'Некорректные даты';
+        return;
+      }
+
+      const diffMs   = endDate - startDate;
+      const days     = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+      if (days <= 0) {
+        costEl.innerHTML = 'Стоимость: — ₽';
+        return;
+      }
+
+      const dailyPrice = Number('{{ product.daily_price|floatformat:"-2"|default:"0" }}');
+
+      if (isNaN(dailyPrice)) {
+        costEl.innerHTML = 'Ошибка цены';
+        return;
+      }
+
+      const cost = days * dailyPrice;
+
+      costEl.innerHTML = 
+        `Стоимость: ${cost.toLocaleString('ru-RU')} ₽ <small class="text-muted">(за ${days} дн.)</small>`;
+    }
+
+    // Слушатели
+    startInput.addEventListener('change', calculateCost);
+    endInput.addEventListener('change', calculateCost);
+
+    // Запуск при загрузке
+    calculateCost();
+  });
+  </script>
+{% endblock %}

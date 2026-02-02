@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Аренда учебников и оборудования{% endblock %}
+
+{% block content %}
+  <div class="container text-center mt-5">
+    <h1 class="display-4">Добро пожаловать!</h1>
+    <p class="lead mt-4">Сервис аренды учебников, калькуляторов, камер и другого оборудования между студентами</p>
+
+    <div class="mt-5">
+      <a href="{% url 'catalog:product_list' %}" class="btn btn-primary btn-lg">
+        Перейти в каталог
+      </a>
+    </div>
+
+    {% if user.is_authenticated %}
+      <p class="mt-4">Привет, {{ user.username }}! Ты уже в системе.</p>
+    {% else %}
+      <p class="mt-4">
+        <a href="{% url 'register' %}">Зарегистрироваться</a> или
+        <a href="{% url 'login' %}">Войти</a>
+      </p>
+    {% endif %}
+  </div>
+{% endblock %}

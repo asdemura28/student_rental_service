@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}  <!-- на всякий случай, если где-то понадобится -->
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block extra_head %}
+  <!-- FullCalendar v6 -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+{% endblock %}
+
+{% block content %}
+  <div class="container mt-4">
+    <!-- Блок с автором и названием -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+      <!-- Автор первым (слева на десктопе, сверху на мобильных) -->
+      <div class="text-muted fs-5 mb-2 mb-md-0">
+        {% if product.author %}
+          <em>Автор: {{ product.author }}</em>
+        {% else %}
+          <em>Автор не указан</em>
+        {% endif %}
+      </div>
+
+      <!-- Название после автора -->
+      <h1 class="mb-0">{{ product.name }}</h1>
+    </div>
+
+    <div class="row">
+      <!-- Фото товара -->
+      <div class="col-md-6 mb-4">
+        {% if product.photo %}
+          <img src="{{ product.photo.url }}" class="img-fluid rounded shadow" alt="{{ product.name }}">
+        {% else %}
+          <img src="https://via.placeholder.com/600x400?text=Нет+фото" class="img-fluid rounded shadow" alt="Нет фото">
+        {% endif %}
+      </div>
+
+      <!-- Информация о товаре -->
+      <div class="col-md-6">
+        <h3>Описание</h3>
+        <p class="lead">{{ product.description|linebreaks }}</p>
+
+        <h4 class="mt-4">Цены и условия</h4>
+        <ul class="list-group list-group-flush mb-4">
+          <li class="list-group-item">
+            <strong>В день:</strong> {{ product.daily_price }} ₽
+          </li>
+          {% if product.weekly_price %}
+            <li class="list-group-item">
+              <strong>В неделю:</strong> {{ product.weekly_price }} ₽
+            </li>
+          {% endif %}
+          <li class="list-group-item">
+            <strong>Залог (возвратный):</strong> {{ product.deposit }} ₽
+          </li>
+        </ul>
+
+        <p>
+          <strong>Владелец:</strong> 
+          {{ product.owner.get_full_name|default:product.owner.username }}
+          <span class="badge bg-secondary ms-2">Рейтинг: {{ product.owner.rating|floatformat:1 }}</span>
+        </p>
+
+        <div class="mt-4">
+          {% if user.is_authenticated and user != product.owner %}
+            <a href="{% url 'bookings:create_booking' product.pk %}" class="btn btn-success btn-lg">
+              Забронировать
+            </a>
+          {% elif user == product.owner %}
+            <a href="#" class="btn btn-outline-secondary btn-lg disabled">
+              Это ваш предмет
+            </a>
+          {% else %}
+            <p class="text-muted">
+              <a href="{% url 'login' %}?next={{ request.path|urlencode }}">Войдите</a>, чтобы забронировать
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-5">
+
+    <h3>Календарь доступности</h3>
+    <div id="calendar" class="border rounded p-3 bg-light"></div>
+
+    <!-- Передача занятых дат -->
+    {{ events|json_script:"events-data" }}
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('calendar');
+
+        const eventsDataElement = document.getElementById('events-data');
+        const eventsData = eventsDataElement ? JSON.parse(eventsDataElement.textContent || '[]') : [];
+
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'dayGridMonth',
+          locale: 'ru',
+          firstDay: 1,
+          timeZone: 'Europe/Moscow',
+
+          headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek'
+          },
+
+          events: eventsData,
+
+          selectable: false,
+          editable: false,
+          allDayDefault: true,
+          eventDisplay: 'block',
+
+          eventDidMount: function (info) {
+            info.el.setAttribute('title', info.event.title || 'Забронировано');
+          },
+
+          height: 'auto',
+          contentHeight: 'auto',
+          aspectRatio: 1.35
+        });
+
+        calendar.render();
+      });
+    </script>
+
+    <style>
+      #calendar {
+        max-width: 1100px;
+        margin: 0 auto 40px auto;
+      }
+      .fc .fc-daygrid-event {
+        white-space: normal;
+        padding: 2px 4px;
+      }
+      .fc-booked-event {
+        opacity: 0.9;
+        border: 1px solid #721c24;
+      }
+    </style>
+  </div>
+{% endblock %}
